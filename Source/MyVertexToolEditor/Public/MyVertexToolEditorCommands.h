@@ -10,8 +10,8 @@ class FMyVertexToolEditorCommands : public TCommands<FMyVertexToolEditorCommands
 public:
 	FMyVertexToolEditorCommands()
 		: TCommands<FMyVertexToolEditorCommands>(
-			TEXT("MyVertexTool"),
-			NSLOCTEXT("Contexts", "MyVertexTool", "MyVertexTool Plugin"),
+			TEXT("MyVertexToolEditor"),
+			NSLOCTEXT("Contexts", "MyVertexToolEditor", "MyVertexToolEditor Plugin"),
 			NAME_None,
 			FMyVertexToolEditorStyle::GetStyleSetName())
 	{

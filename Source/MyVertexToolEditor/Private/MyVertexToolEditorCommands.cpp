@@ -6,7 +6,7 @@
 
 void FMyVertexToolEditorCommands::RegisterCommands()
 {
-	UI_COMMAND(PluginAction, "MyVertexTool", "Execute MyVertexTool action", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(PluginAction, "MyVertexToolEditor", "Execute MyVertexToolEditor action", EUserInterfaceActionType::Button, FInputChord());
 }
 
 #undef LOCTEXT_NAMESPACE

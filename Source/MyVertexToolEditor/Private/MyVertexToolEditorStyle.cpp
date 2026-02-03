@@ -42,7 +42,7 @@ TSharedRef<FSlateStyleSet> FMyVertexToolEditorStyle::Create()
 	TSharedRef<FSlateStyleSet> Style = MakeShareable(new FSlateStyleSet("MyVertexToolEditorStyle"));
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("MyVertexTool")->GetBaseDir() / TEXT("Resources"));
 
-	Style->Set("MyVertexTool.PluginAction", new IMAGE_BRUSH_SVG(TEXT("PlaceholderButtonIcon"), Icon20x20));
+	Style->Set("MyVertexToolEditor.PluginAction", new IMAGE_BRUSH_SVG(TEXT("PlaceholderButtonIcon"), Icon20x20));
 	return Style;
 }
 

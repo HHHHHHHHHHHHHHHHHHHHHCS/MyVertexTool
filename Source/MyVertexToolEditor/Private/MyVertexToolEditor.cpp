@@ -6,9 +6,9 @@
 #include "Misc/MessageDialog.h"
 #include "ToolMenus.h"
 
-static const FName MyVertexToolTabName("MyVertexTool");
+static const FName MyVertexToolEditorTabName("MyVertexToolEditor");
 
-#define LOCTEXT_NAMESPACE "FMyVertexToolModule"
+#define LOCTEXT_NAMESPACE "FMyVertexToolEditorModule"
 
 void FMyVertexToolEditorModule::StartupModule()
 {
@@ -48,8 +48,8 @@ void FMyVertexToolEditorModule::PluginButtonClicked()
 	// Put your "OnButtonClicked" stuff here
 	FText DialogText = FText::Format(
 		LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
-		FText::FromString(TEXT("FMyVertexToolModule::PluginButtonClicked()")),
-		FText::FromString(TEXT("MyVertexTool.cpp"))
+		FText::FromString(TEXT("FMyVertexToolEditorModule::PluginButtonClicked()")),
+		FText::FromString(TEXT("MyVertexToolEditor.cpp"))
 	);
 	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 }
