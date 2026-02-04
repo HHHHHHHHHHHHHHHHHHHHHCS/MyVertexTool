@@ -20,6 +20,10 @@ public:
 private:
 	void RegisterMenus();
 
+	TSharedRef<SWidget> CreateComboToolContent() const;
+
+	static void OnMenuClicked_VertexTool();
+	
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;
 };

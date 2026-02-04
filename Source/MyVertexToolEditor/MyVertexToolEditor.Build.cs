@@ -45,6 +45,9 @@ public class MyVertexToolEditor : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"UMG",
+				"UMGEditor",
+				"Blutility",
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);
