@@ -52,6 +52,7 @@ public class MyVertexToolEditor : ModuleRules
 				"MeshDescription",
 				"StaticMeshDescription",
 				"AssetRegistry",
+				"RenderCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);

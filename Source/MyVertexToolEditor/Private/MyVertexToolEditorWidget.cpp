@@ -207,11 +207,24 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 
 	// UE 重写了 '/', 这里的作用是路径拼接
 	FString fullPackageName = packagePath / assetName;
+	UPackage* package = CreatePackage(*fullPackageName);
 
-	UStaticMesh* staticMesh = NewObject<UStaticMesh>(
-		CreatePackage(*fullPackageName),
-		*assetName,
-		RF_Public | RF_Standalone);
+	// 判断是否存在, 如果存在就做修改, 不存在就New
+	UStaticMesh* staticMesh = FindObject<UStaticMesh>(package, *assetName);
+	const bool bIsNewAsset = (staticMesh == nullptr);
+	
+	if (bIsNewAsset)
+	{
+		staticMesh = NewObject<UStaticMesh>(package, *assetName, RF_Public | RF_Standalone);
+	}
+	else
+	{
+		// 先释放资源, 注意要等待 然后释放渲染资源
+		staticMesh->Modify(); // 记录修改
+		staticMesh->ReleaseResources();
+		FlushRenderingCommands(); // 等渲染线程彻底放掉旧资源
+		staticMesh->GetStaticMaterials().Reset();
+	}
 
 	// staticMesh->bSupportRayTracing = 0;
 	staticMesh->InitResources();
