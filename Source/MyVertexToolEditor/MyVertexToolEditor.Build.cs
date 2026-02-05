@@ -48,6 +48,10 @@ public class MyVertexToolEditor : ModuleRules
 				"UMG",
 				"UMGEditor",
 				"Blutility",
+				"DesktopPlatform",
+				"MeshDescription",
+				"StaticMeshDescription",
+				"AssetRegistry",
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);
