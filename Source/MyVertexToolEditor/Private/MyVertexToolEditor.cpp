@@ -94,7 +94,7 @@ TSharedRef<SWidget> FMyVertexToolEditorModule::CreateComboToolContent() const
 	if (!UToolMenus::Get()->IsMenuRegistered(MenuName))
 	{
 		UToolMenu* Menu = UToolMenus::Get()->RegisterMenu(MenuName);
-		// 可以添加不同的selection, 分割用
+		// 可以添加不同的section, 分割用
 		// FToolMenuSection& ManagePlatformsSection = Menu->AddSection("MyToolsMenu_Other", LOCTEXT("MyEditorTools_Other", "MyEditorTools/Other"));
 		FToolMenuSection& ManagePlatformsSection = Menu->AddSection("MyToolsMenu", LOCTEXT("MyEditorTools", "MyEditorTools"));
 		ManagePlatformsSection.AddDynamicEntry(

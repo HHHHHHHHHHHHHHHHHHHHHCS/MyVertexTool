@@ -121,7 +121,7 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 	constexpr int32 k_VertexCount = (k_MeshWNum + 1) * (2 * k_MeshHNum + 1);
 	constexpr int32 k_IndicesCount = k_MeshWNum * (2 * k_MeshHNum) * 6;
 
-	// 把二维数组转换为一线性数据
+	// 把二维数组转换为一维线性数据
 	TArray<FVector3f> vertArray;
 	vertArray.SetNum(k_VertexCount);
 	TArray<FVector2f> uvArray;
