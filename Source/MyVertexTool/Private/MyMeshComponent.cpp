@@ -1,5 +1,6 @@
 ﻿#include "MyMeshComponent.h"
 #include "MyMeshConfig.h"
+#include "MyMeshSceneProxy.h"
 
 UMyMeshComponent::UMyMeshComponent()
 {
@@ -22,8 +23,7 @@ void UMyMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 FPrimitiveSceneProxy* UMyMeshComponent::CreateSceneProxy()
 {
-	// TODO:
-	return nullptr;
+	return new FMyMeshSceneProxy(this);
 }
 
 FBoxSphereBounds UMyMeshComponent::CalcBounds(const FTransform& LocalToWorld) const

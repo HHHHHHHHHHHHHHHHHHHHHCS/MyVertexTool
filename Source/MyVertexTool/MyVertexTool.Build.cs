@@ -33,7 +33,9 @@ public class MyVertexTool : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"Projects",
-				"RenderCore"
+				"RenderCore",
+				"RHI",
+				"Renderer",
 			}
 		);
 
