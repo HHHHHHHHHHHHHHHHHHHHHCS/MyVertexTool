@@ -23,12 +23,29 @@ public:
 
 class FMyMeshInstanceBuffer final : public FRenderResource
 {
+private:
+	bool isDataDirty;
+	TArray<MyMeshInstanceType> instanceDataArray;
+	FBufferRHIRef instanceBufferRHI;
+	FShaderResourceViewRHIRef instanceBufferSRV;
+	
 public:
 	FMyMeshInstanceBuffer();
 
-	UE_NODISCARD_CTOR FORCEINLINE uint32 GetInstanceCount() const { return k_QuadCount; }
-};
+	void OnInit();
 
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
+	virtual void ReleaseRHI() override;
+
+	void UpdateBuffer_RenderThread(FRHICommandList& RHICmdList);
+
+	FORCEINLINE void SetDataDirty(bool _isDataDirty = true) { isDataDirty = _isDataDirty; }
+
+	UE_NODISCARD_CTOR FORCEINLINE uint32 GetInstanceCount() const { return k_QuadCount; }
+	UE_NODISCARD_CTOR FORCEINLINE uint32 GetInstanceBufferSize() const { return GetInstanceCount() * sizeof(MyMeshInstanceType); }
+	UE_NODISCARD_CTOR FORCEINLINE TArray<MyMeshInstanceType>& GetInstanceDataArray() { return instanceDataArray; }
+	UE_NODISCARD_CTOR FORCEINLINE FRHIShaderResourceView* GetInstanceBufferSRV() const { return instanceBufferSRV; }
+};
 
 class FMyMeshParamsBuffer final : public FRenderResource
 {

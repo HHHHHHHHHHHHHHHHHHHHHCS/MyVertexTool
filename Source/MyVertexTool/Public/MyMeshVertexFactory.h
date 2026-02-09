@@ -40,5 +40,5 @@ public:
 	UE_NODISCARD_CTOR FORCEINLINE FMyMeshVertexBuffer* GetVertexBuffer() const { return vertexBuffer.Get(); }
 	UE_NODISCARD_CTOR FORCEINLINE FMyMeshIndexBuffer* GetIndexBuffer() const { return indexBuffer.Get(); }
 	UE_NODISCARD_CTOR FORCEINLINE FMyMeshInstanceBuffer* GetInstanceBuffer() const { return instanceBuffer.Get(); }
-	UE_NODISCARD_CTOR FORCEINLINE FMyMeshParamsBuffer* GetUniformBuffer() const { return paramsBuffer.Get(); }
+	UE_NODISCARD_CTOR FORCEINLINE FMyMeshParamsBuffer* GetParamsBuffer() const { return paramsBuffer.Get(); }
 };

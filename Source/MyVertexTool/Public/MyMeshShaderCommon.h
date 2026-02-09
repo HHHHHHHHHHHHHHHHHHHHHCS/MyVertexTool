@@ -8,6 +8,7 @@ public:
 
 // UE 顶点阶段 不怎么支持 StructuredBuffer, 所以这里用 Buffer<float4> Pacv/Unpack
 // Buffer<float4> 需要 float4 对齐
+// 注意要写空的构造函数, TArray 需要
 struct MyMeshInstanceType
 {
 public:
@@ -18,6 +19,13 @@ public:
 	MyMeshInstanceType(FVector2f _posWSOffset, float _scale)
 		: posWSOffset(_posWSOffset)
 		, scale(_scale)
+		, padding0(0)
+	{
+	}
+
+	MyMeshInstanceType()
+		: posWSOffset(FVector2f{})
+		, scale(0)
 		, padding0(0)
 	{
 	}

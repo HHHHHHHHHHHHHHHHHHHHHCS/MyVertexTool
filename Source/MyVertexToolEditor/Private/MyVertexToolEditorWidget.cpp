@@ -86,7 +86,7 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 	constexpr int32 k_MeshWNum = 30;
 	constexpr int32 k_MeshHNum = 13;
 
-	FVector3f vertexs[k_MeshWNum + 1][k_MeshHNum * 2 + 1];
+	FVector3f vertices[k_MeshWNum + 1][k_MeshHNum * 2 + 1];
 	FVector2f uvs[k_MeshWNum + 1][k_MeshHNum * 2 + 1];
 	float delta = 2.0f * PI / k_MeshWNum;
 	for (int32 i = 0; i < k_MeshWNum + 1; i++)
@@ -105,7 +105,7 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 
 			float r = (1 - (float)FMath::Abs(j) / k_MeshHNum) * k_MeshRadius;
 			// 注意向上的轴是z, 尺寸单位是 cm 所以x100
-			vertexs[i][j + k_MeshHNum] = 100.0f * FVector3f(x * r, z * r, y);
+			vertices[i][j + k_MeshHNum] = 100.0f * FVector3f(x * r, z * r, y);
 
 			FVector2f uv = FVector2f(
 				4.0f * i / k_MeshWNum,
@@ -135,7 +135,7 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 		for (int32 j = 0; j < k_MeshHNum * 2 + 1; j++)
 		{
 			int32 idx = i * (k_MeshHNum * 2 + 1) + j;
-			vertArray[idx] = vertexs[i][j];
+			vertArray[idx] = vertices[i][j];
 			uvArray[idx] = uvs[i][j];
 			currIdx++;
 		}
@@ -205,7 +205,7 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 		meshDesc.CreatePolygon(polyGroup, instanceIDs);
 	}
 
-	// UE 重写了 '/', 这里的作用是路径拼接
+	// UE 重载了 '/', 这里用于路径拼接
 	FString fullPackageName = packagePath / assetName;
 	UPackage* package = CreatePackage(*fullPackageName);
 

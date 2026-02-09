@@ -1,4 +1,5 @@
 #include "MyVertexTool.h"
+#include "Interfaces/IPluginManager.h"
 
 static const FName MyVertexToolTabName("MyVertexTool");
 
@@ -6,6 +7,9 @@ static const FName MyVertexToolTabName("MyVertexTool");
 
 void FMyVertexToolModule::StartupModule()
 {
+	FString pluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("MyVertexTool"))->GetBaseDir(),
+										  TEXT("Shaders"));
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/MyVertexTool"), pluginShaderDir);
 }
 
 void FMyVertexToolModule::ShutdownModule()
