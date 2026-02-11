@@ -63,7 +63,7 @@ public:
 
 	void SetData(const FMyMeshVertexFactoryParameters& newParams);
 
-	void UpdateBuffer(FRHICommandList& rhiCmdList);
+	void UpdateBuffer_RenderThread(FRHICommandList& rhiCmdList);
 
 	UE_NODISCARD_CTOR FORCEINLINE FUniformBufferRHIRef GetUniformBuffer() const { return uniformBufferRHI; }
 };

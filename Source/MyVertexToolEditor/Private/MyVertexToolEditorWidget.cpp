@@ -1,8 +1,10 @@
 ﻿#include "MyVertexToolEditorWidget.h"
-#include "DesktopPlatformModule.h"
 #include "EditorUtilityWidgetComponents.h"
 #include "StaticMeshAttributes.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
+#include "Misc/PackageName.h"
 
 void UMyVertexToolEditorWidget::NativeConstruct()
 {
@@ -30,53 +32,30 @@ void UMyVertexToolEditorWidget::OnClick_CreateMyMesh()
 
 bool UMyVertexToolEditorWidget::OpenSaveAssetDialog(FString& outPackagePath, FString& outAssetName)
 {
-	IDesktopPlatform* desktopPlatform = FDesktopPlatformModule::Get();
-	if (!desktopPlatform)
+	FContentBrowserModule& ContentBrowserModule =
+		FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	IContentBrowserSingleton& ContentBrowser = ContentBrowserModule.Get();
+
+	FSaveAssetDialogConfig SaveAssetDialogConfig;
+	SaveAssetDialogConfig.DefaultPath = TEXT("/Game");
+	SaveAssetDialogConfig.DefaultAssetName = TEXT("MyMeshAsset");
+	SaveAssetDialogConfig.AssetClassNames.Add(UStaticMesh::StaticClass()->GetClassPathName());
+	SaveAssetDialogConfig.ExistingAssetPolicy = ESaveAssetDialogExistingAssetPolicy::AllowButWarn;
+	SaveAssetDialogConfig.DialogTitleOverride = FText::FromString(TEXT("Save MyMesh Asset"));
+
+	// 如果只储存在 Content下 CreateModalSaveAssetDialog 比 SaveFileDialog 效果更好
+	// FDesktopPlatformModule::Get()->SaveFileDialog() // 别忘添加 "DesktopPlatform" module
+	const FString SaveObjectPath = ContentBrowser.CreateModalSaveAssetDialog(SaveAssetDialogConfig);
+	if (SaveObjectPath.IsEmpty())
 	{
 		return false;
 	}
 
-	void* parentWindowHandle = nullptr;
-
-	const FString defaultPath = FPaths::ProjectContentDir();
-	const FString defaultFile = TEXT("MyMeshAsset");
-
-	TArray<FString> outFiles;
-
-	bool bResult = desktopPlatform->SaveFileDialog(
-		parentWindowHandle,
-		TEXT("Save Asset"),
-		defaultPath,
-		defaultFile,
-		TEXT("Unreal Asset (*.uasset)|*.uasset"),
-		EFileDialogFlags::None,
-		outFiles
-	);
-
-	if (!bResult || outFiles.Num() == 0)
-	{
-		return false;
-	}
-
-	FString fullPath = outFiles[0];
-
-	// 必须在 Content 目录下
-	if (!fullPath.StartsWith(FPaths::ProjectContentDir()))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Asset must be saved under Content folder"));
-		return false;
-	}
-
-	// 磁盘路径 -> /Game/ 路径
-	FString relativePath = fullPath;
-	FPaths::MakePathRelativeTo(relativePath, *FPaths::ProjectContentDir());
-
-	FString packagePath = TEXT("/Game/") + FPaths::GetPath(relativePath);
-	FString assetName = FPaths::GetBaseFilename(relativePath);
-
-	outPackagePath = packagePath;
-	outAssetName = assetName;
-	return true;
+	outPackagePath = FPackageName::GetLongPackagePath(SaveObjectPath);
+	// 别用这个 因为会 返回 assetName.assetName
+	// outAssetName = FPackageName::GetLongPackageAssetName(SaveObjectPath);
+	outAssetName = FPackageName::ObjectPathToObjectName(SaveObjectPath);
+	return !outPackagePath.IsEmpty() && !outAssetName.IsEmpty();
 }
 
 void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetName)
@@ -212,7 +191,7 @@ void UMyVertexToolEditorWidget::CreateMyMesh(FString packagePath, FString assetN
 	// 判断是否存在, 如果存在就做修改, 不存在就New
 	UStaticMesh* staticMesh = FindObject<UStaticMesh>(package, *assetName);
 	const bool bIsNewAsset = (staticMesh == nullptr);
-	
+
 	if (bIsNewAsset)
 	{
 		staticMesh = NewObject<UStaticMesh>(package, *assetName, RF_Public | RF_Standalone);

@@ -157,7 +157,7 @@ void FMyMeshParamsBuffer::SetData(const FMyMeshVertexFactoryParameters& newParam
 	isDataDirty = true;
 }
 
-void FMyMeshParamsBuffer::UpdateBuffer(FRHICommandList& rhiCmdList)
+void FMyMeshParamsBuffer::UpdateBuffer_RenderThread(FRHICommandList& rhiCmdList)
 {
 	if (!isDataDirty)
 	{

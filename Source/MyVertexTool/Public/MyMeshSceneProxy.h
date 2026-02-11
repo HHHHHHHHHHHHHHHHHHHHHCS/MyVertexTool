@@ -35,4 +35,8 @@ public:
 	virtual void GetDynamicMeshElements(
 		const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap,
 		class FMeshElementCollector& Collector) const override;
+
+	void InitMyMeshData() const;
+	void UpdateInstanceBuffer(FRHICommandList& rhiCmdList) const;
+	void UpdateParamsBuffer(FRHICommandList& rhiCmdList) const;
 };

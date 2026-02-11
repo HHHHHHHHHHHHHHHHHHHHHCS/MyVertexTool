@@ -48,7 +48,7 @@ public class MyVertexToolEditor : ModuleRules
 				"UMG",
 				"UMGEditor",
 				"Blutility",
-				"DesktopPlatform",
+				"ContentBrowser",
 				"MeshDescription",
 				"StaticMeshDescription",
 				"AssetRegistry",

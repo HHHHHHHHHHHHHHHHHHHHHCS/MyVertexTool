@@ -130,7 +130,20 @@ void FMyVertexToolEditorModule::OnMenuClicked_VertexTool()
 	const FString BlueprintPathStr = TEXT("/Script/Blutility.EditorUtilityWidgetBlueprint'/MyVertexTool/Editor/Blueprints/EUW_MyVertexToolEditor.EUW_MyVertexToolEditor'");
 	const FSoftObjectPath BlueprintPath = BlueprintPathStr;
 	UObject* BlueprintObject = BlueprintPath.TryLoad();
+
+	if (!IsValid(BlueprintObject))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to load EUW blueprint: %s"), *BlueprintPathStr);
+		return;
+	}
+
 	UEditorUtilityWidgetBlueprint* LoadedEditorUtilityBlueprint = Cast<UEditorUtilityWidgetBlueprint>(BlueprintObject);
+	if (!IsValid(LoadedEditorUtilityBlueprint))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Loaded object is not UEditorUtilityWidgetBlueprint: %s"), *BlueprintPathStr);
+		return;
+	}
+
 	EditorUtilitySubsystem->SpawnAndRegisterTabWithId(LoadedEditorUtilityBlueprint, FName(TEXT("MyVertexTool")));
 }
 

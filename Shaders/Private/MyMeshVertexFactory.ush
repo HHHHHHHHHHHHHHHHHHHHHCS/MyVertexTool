@@ -1,0 +1,447 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/VertexFactoryCommon.ush"
+
+// UniformBuffer MyMeshVF
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+#if NUM_TEX_COORD_INTERPOLATORS
+	float4	TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2] : TEXCOORD0;
+#endif
+
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	nointerpolation uint PrimitiveId : PRIMITIVE_ID;
+#endif
+
+#if INSTANCED_STEREO
+	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
+#endif
+};
+
+/** 
+ * Per-vertex inputs from bound vertex buffers.  Used by passes with a trimmed down position-only shader.
+ */
+struct FPositionOnlyVertexFactoryInput
+{
+	float4 Position : ATTRIBUTE0;
+
+	uint InstanceId : SV_InstanceID;
+
+	VF_GPUSCENE_DECLARE_INPUT_BLOCK(1)
+	VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
+};
+
+struct FPositionAndNormalOnlyVertexFactoryInput
+{
+	float4 Position : ATTRIBUTE0;
+	float4 Normal : ATTRIBUTE2;
+
+	uint InstanceId : SV_InstanceID;
+
+	VF_GPUSCENE_DECLARE_INPUT_BLOCK(1)
+	VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
+};
+
+
+/**
+ * Per-vertex inputs from bound vertex buffers
+ */
+struct FVertexFactoryInput
+{
+	float4 Position : ATTRIBUTE0;
+
+	uint InstanceId : SV_InstanceID;
+	uint VertexId : SV_VertexID;
+
+	VF_GPUSCENE_DECLARE_INPUT_BLOCK(13)
+	VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
+};
+
+/** 
+ * Caches intermediates that would otherwise have to be computed multiple times.  Avoids relying on the compiler to optimize out redundant operations.
+ */
+struct FVertexFactoryIntermediates
+{
+	/** Cached primitive and instance data */
+	FSceneDataIntermediates SceneData;
+
+	FDFMatrix LocalToWorld;
+};
+
+struct MyMeshInstanceType
+{
+	float2 posWSOffset;
+	float scale;
+	float padding0;
+};
+
+// 因为不用VR 所以不用专门写
+// #if INSTANCED_STEREO
+// #endif
+
+Buffer<float4> _MyMeshInstanceBuffer;
+
+// 为什么这么写? 参考FMyMeshCommonInstanceBuffer::InitRHI, 顶点阶段不怎么支持StructuredBuffer
+MyMeshInstanceType UnpackMyMeshInstanceBuffer(int instanceID)
+{
+	MyMeshInstanceType OUT;
+	int idx = instanceID;
+	float4 val0 = _MyMeshInstanceBuffer[idx];
+	// 如果我们的结构体里面有 int, 需要用 asint 转换回来
+	OUT.posWSOffset = val0.xy;
+	OUT.scale = val0.z;
+	OUT.padding0 = val0.w;
+	return OUT;
+}
+
+FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.SceneData.Primitive;
+}
+
+uint GetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	return Interpolants.PrimitiveId;
+#else
+	return 0;
+#endif
+}
+
+void SetPrimitiveId(inout FVertexFactoryInterpolantsVSToPS Interpolants, uint PrimitiveId)
+{
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	Interpolants.PrimitiveId = PrimitiveId;
+#endif
+}
+
+#if NUM_TEX_COORD_INTERPOLATORS
+float2 GetUV(FVertexFactoryInterpolantsVSToPS Interpolants, int UVIndex)
+{
+	float4 UVVector = Interpolants.TexCoords[UVIndex / 2];
+	return UVIndex % 2 ? UVVector.zw : UVVector.xy;
+}
+
+void SetUV(inout FVertexFactoryInterpolantsVSToPS Interpolants, int UVIndex, float2 InValue)
+{
+	FLATTEN
+	if (UVIndex % 2)
+	{
+		Interpolants.TexCoords[UVIndex / 2].zw = InValue;
+	}
+	else
+	{
+		Interpolants.TexCoords[UVIndex / 2].xy = InValue;
+	}
+}
+#endif
+
+/**
+* Get the 3x3 tangent basis vectors for this vertex factory
+* this vertex factory will calculate the binormal on-the-fly
+*
+* @param Input - vertex input stream structure
+* @return 3x3 matrix
+*/
+half3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return half3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+}
+
+float3 GetPositionOS(float3 a2vPos, int instanceID)
+{
+	float3 positionOS = a2vPos;
+	MyMeshInstanceType data = UnpackMyMeshInstanceBuffer(instanceID);
+	positionOS.xy *= data.scale;
+	positionOS.xy += data.posWSOffset;
+	positionOS.xy *= MyMeshVF._QuadWorldScale;
+
+	return positionOS;
+}
+
+// @return translated world position
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float3 positionOS = GetPositionOS(Input.Position.xyz, Input.InstanceId);
+	float4 position = TransformLocalToTranslatedWorld(positionOS, Intermediates.LocalToWorld);
+	return position;
+}
+
+/** for depth-only pass */
+float4 VertexFactoryGetWorldPosition(FPositionOnlyVertexFactoryInput Input)
+{
+	float3 positionOS = GetPositionOS(Input.Position.xyz, Input.InstanceId);
+	float4 position = TransformLocalToTranslatedWorld(positionOS);
+	return position;
+}
+
+float4 VertexFactoryGetWorldPosition(FPositionAndNormalOnlyVertexFactoryInput Input)
+{
+	float3 positionOS = GetPositionOS(Input.Position.xyz, Input.InstanceId);
+	float4 position = TransformLocalToTranslatedWorld(positionOS);
+	return position;
+}
+
+float4 VertexFactoryGetRasterizedWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates,
+												float4 InWorldPosition)
+{
+	return InWorldPosition;
+}
+
+float3 VertexFactoryGetPositionForVertexLighting(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates,
+												float3 TranslatedWorldPosition)
+{
+	return TranslatedWorldPosition;
+}
+
+// local position relative to instance
+float3 VertexFactoryGetPreviousInstanceSpacePosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float3 PrevLocalPosition = GetPositionOS(Input.Position.xyz, Input.InstanceId);
+	return PrevLocalPosition.xyz;
+}
+
+FInstanceSceneData GetInstanceData(FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.SceneData.InstanceData;
+}
+
+// @return previous translated world position
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float4 PrevLocalPosition = float4(VertexFactoryGetPreviousInstanceSpacePosition(Input, Intermediates), 1);
+	// 为什么这么写? 因为有motion blur的存在, 会导致quad大移动的时候闪一下, 所以这样去掉velocity差
+	FDFMatrix PreviousLocalToWorld = GetInstanceData(Intermediates).LocalToWorld; // .PrevLocalToWorld;
+	return TransformPreviousLocalPositionToTranslatedWorld(PrevLocalPosition.xyz, PreviousLocalToWorld);
+}
+
+float4 VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FPrimitiveSceneData PrimitiveData = GetPrimitiveData(GetPrimitiveId(Interpolants));
+	return float4(DFFastToTranslatedWorld(PrimitiveData.ObjectWorldPosition, ResolvedView.PreViewTranslation), PrimitiveData.ObjectRadius);
+}
+
+uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return GetPrimitiveId(Interpolants);
+}
+
+float3 VertexFactoryGetWorldNormal(FPositionAndNormalOnlyVertexFactoryInput Input)
+{
+	return float3(0.0f, 0.0f, 1.0f);
+}
+
+float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	// TODO: Central differencing to figure out the normal
+	return float3(0.0f, 0.0f, 1.0f);
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants, float4 SvPosition)
+{
+	// GetMaterialPixelParameters is responsible for fully initializing the result
+	FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
+
+#if NUM_TEX_COORD_INTERPOLATORS
+	UNROLL
+	for (int CoordinateIndex = 0; CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS; CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = GetUV(Interpolants, CoordinateIndex);
+	}
+#endif	//NUM_MATERIAL_TEXCOORDS
+
+	// half3 TangentToWorld0 = half3(1, 0, 0);
+	// half4 TangentToWorld2 = half4(0, 0, 1, 1);
+	// Result.TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
+
+	Result.TangentToWorld = half3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+
+	Result.TwoSidedSign = 1;
+
+	return Result;
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
+													FVertexFactoryIntermediates Intermediates,
+													float3 WorldPosition,
+													half3x3 TangentToLocal,
+													bool bIsPreviousFrame = false)
+{
+	FMaterialVertexParameters Result = MakeInitializedMaterialVertexParameters();
+
+	Result.SceneData = Intermediates.SceneData;
+	Result.WorldPosition = WorldPosition;
+	Result.TangentToWorld = float3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+	Result.PreSkinnedPosition = GetPositionOS(Input.Position.xyz, Input.InstanceId);
+	Result.PreSkinnedNormal = float3(0, 0, 1);
+
+	Result.LWCData = MakeMaterialLWCData(Result);
+
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
+	// Water doesn't get texcoords from its input verts, so all the vert texcoords will default to the same world position
+	// LWC note: this calculation was optimized to avoid a subtraction, which theoretically could have an impact near tile edges, but testing showed no additional artifacts.
+	UNROLL
+	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
+	{
+		// 通过 WorldPosition 直接推算 UV
+		float3 AbsoluteWorldPos = LWCToFloat(Result.LWCData.AbsoluteWorldPosition);
+		Result.TexCoords[CoordinateIndex] = AbsoluteWorldPos.xy / 100.0f;
+	}
+#endif  //NUM_MATERIAL_TEXCOORDS_VERTEX
+
+	return Result;
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates;
+
+	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+
+	Intermediates.LocalToWorld = GetInstanceData(Intermediates).LocalToWorld;
+
+	return Intermediates;
+}
+
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input,
+																	FVertexFactoryIntermediates Intermediates,
+																	FMaterialVertexParameters VertexParameters)
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+
+	// Initialize the whole struct to 0
+	// Really only the last two components of the packed UVs have the opportunity to be uninitialized
+	Interpolants = (FVertexFactoryInterpolantsVSToPS)0;
+
+#if NUM_TEX_COORD_INTERPOLATORS
+	float2 CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS];
+	GetMaterialCustomizedUVs(VertexParameters, CustomizedUVs);
+	GetCustomInterpolators(VertexParameters, CustomizedUVs);
+	
+	UNROLL
+	for (int CoordinateIndex = 0; CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS; CoordinateIndex++)
+	{
+		SetUV(Interpolants, CoordinateIndex, CustomizedUVs[CoordinateIndex]);
+	}
+#endif
+
+	SetPrimitiveId(Interpolants, Intermediates.SceneData.PrimitiveId);
+
+#if INSTANCED_STEREO
+	Interpolants.EyeIndex = 0;
+#endif
+
+	return Interpolants;
+}
+
+#if RAYHITGROUPSHADER
+
+FVertexFactoryInput LoadVertexFactoryInputForHGS(uint TriangleIndex, int VertexIndex)
+{
+	FVertexFactoryInput Input = (FVertexFactoryInput)0;
+
+	FTriangleBaseAttributes Tri = LoadTriangleBaseAttributes(TriangleIndex);
+
+	Input.VertexId = Tri.Indices[VertexIndex];
+	Input.Position = float4(Tri.LocalPositions[VertexIndex], 1.0f);
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	const uint GPUSceneInstanceId = GetInstanceUserData();
+	const FInstanceSceneData InstanceSceneData = GetInstanceSceneData(GPUSceneInstanceId);
+	VF_GPUSCENE_SET_INPUT_FOR_RT(Input, GPUSceneInstanceId, InstanceSceneData.RelativeId);
+
+#if USE_INSTANCING
+	Input.InstanceId = InstanceSceneData.RelativeId;
+#endif
+#else
+#error "HGS requires GPU Scene support"
+#endif // VF_USE_PRIMITIVE_SCENE_DATA
+
+	return Input;
+}
+#endif
+
+
+#if COMPUTESHADER
+
+FVertexFactoryInput LoadVertexFactoryInputForDynamicUpdate(uint TriangleIndex, int VertexIndex, uint PrimitiveId, uint DrawInstanceId)
+{
+	FVertexFactoryInput Input = (FVertexFactoryInput)0;
+
+	if (IsGPUSkinPassThrough())
+	{
+		// GPUSkinPassThrough can change the PositionBuffer every frame but doesn't always update the corresponding 
+		// LocalVF.VertexFetch_PositionBuffer since it relies on fixed function vertex buffer fetch and so doesn't need
+		// to pay the cost of recreating the UniformBuffer.
+		// For the compute shader case we store the PositionBuffer SRV in the loose uniform buffer.
+		Input.VertexId = TriangleIndex * 3 + VertexIndex;
+		uint VertexOffset = LocalVF.VertexFetch_Parameters[VF_VertexOffset] + Input.VertexId;
+		Input.Position.x = GPUSkinPassThroughVFLooseParameters.PositionBuffer[VertexOffset * 3 + 0];
+		Input.Position.y = GPUSkinPassThroughVFLooseParameters.PositionBuffer[VertexOffset * 3 + 1];
+		Input.Position.z = GPUSkinPassThroughVFLooseParameters.PositionBuffer[VertexOffset * 3 + 2];
+	}
+	else
+	{
+		Input.VertexId = TriangleIndex * 3 + VertexIndex;
+		uint VertexOffset = LocalVF.VertexFetch_Parameters[VF_VertexOffset] + Input.VertexId * 3;
+		Input.Position.x = LocalVF.VertexFetch_PositionBuffer[VertexOffset + 0];
+		Input.Position.y = LocalVF.VertexFetch_PositionBuffer[VertexOffset + 1];
+		Input.Position.z = LocalVF.VertexFetch_PositionBuffer[VertexOffset + 2];
+	}
+
+	FPrimitiveSceneData PrimitiveData = GetPrimitiveData(PrimitiveId);
+	VF_GPUSCENE_SET_INPUT_FOR_RT(Input, PrimitiveData.InstanceSceneDataOffset + DrawInstanceId, DrawInstanceId);
+
+#if USE_SPLINEDEFORM
+	Input.Position.w = 1.0;
+#endif
+
+	return Input;
+}
+
+#endif
+
+#if NEEDS_VERTEX_FACTORY_INTERPOLATION
+	struct FVertexFactoryRayTracingInterpolants
+	{
+		FVertexFactoryInterpolantsVSToPS InterpolantsVSToPS;
+	};
+
+	float2 VertexFactoryGetRayTracingTextureCoordinate( FVertexFactoryRayTracingInterpolants Interpolants )
+	{
+#if NUM_MATERIAL_TEXCOORDS
+		return Interpolants.InterpolantsVSToPS.TexCoords[0].xy;
+#else // #if NUM_MATERIAL_TEXCOORDS
+		return float2(0,0);
+#endif // #if NUM_MATERIAL_TEXCOORDS
+	}
+
+	FVertexFactoryInterpolantsVSToPS VertexFactoryAssignInterpolants(FVertexFactoryRayTracingInterpolants Input)
+	{
+		return Input.InterpolantsVSToPS;
+	}
+
+	FVertexFactoryRayTracingInterpolants VertexFactoryGetRayTracingInterpolants(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters)
+	{
+		FVertexFactoryRayTracingInterpolants Interpolants;
+		Interpolants.InterpolantsVSToPS = VertexFactoryGetInterpolantsVSToPS(Input, Intermediates, VertexParameters);
+		return Interpolants;
+	}
+
+	FVertexFactoryRayTracingInterpolants VertexFactoryInterpolate(FVertexFactoryRayTracingInterpolants a, float aInterp, FVertexFactoryRayTracingInterpolants b, float bInterp)
+	{
+		FVertexFactoryRayTracingInterpolants O = a;
+	
+#if INTERPOLATE_MEMBER
+		INTERPOLATE_MEMBER(InterpolantsVSToPS.TexCoords);
+#endif
+
+		return O;
+	}
+#endif // #if NEEDS_VERTEX_FACTORY_INTERPOLATION
+
+#include "/Engine/Private/VertexFactoryDefaultInterface.ush"
